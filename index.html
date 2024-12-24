@@ -4,96 +4,72 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描器</title>
-  <script src="https://serratus.github.io/quaggaJS/dist/quagga.min.js"></script> <style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin: 20px;
     }
     #scanner-container {
       width: 100%;
-      max-width: 500px;
-      height: 300px;
+      max-width: 480px;
       margin: 0 auto;
-      border: 2px solid #ccc;
-      background-color: #f8f8f8;
+      position: relative;
+    }
+    #results {
+      margin-top: 20px;
     }
     button {
-      margin-top: 10px;
       padding: 10px 20px;
+      margin-top: 10px;
       font-size: 16px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    ul {
-      list-style-type: none;
-      padding: 0;
-    }
-    ul li {
-      margin: 5px 0;
-      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <h1>條碼掃描器</h1>
   <div id="scanner-container"></div>
-  <button id="stop">掃描完成</button>
+  <button id="stop-scan">掃描完成</button>
   <h2>掃描記錄</h2>
-  <ul id="barcode-list"></ul>
+  <div id="results"></div>
   <script>
-    // 儲存掃描的條碼資訊
-    const barcodes = [];
+    const scannedCodes = []; // 儲存掃描到的條碼
     // 初始化 Quagga 條碼掃描器
     Quagga.init({
       inputStream: {
         name: "Live",
         type: "LiveStream",
-        target: document.querySelector("#scanner-container"), // 視圖容器
+        target: document.querySelector("#scanner-container"), // 掃描畫面容器
         constraints: {
-          facingMode: "environment" // 使用後置攝像頭
-        }
+          facingMode: "environment", // 後置攝像頭
+        },
       },
       decoder: {
-        readers: ["code_128_reader", "ean_reader", "upc_reader"] // 支援的條碼格式
-      }
+        readers: ["code_128_reader", "ean_reader", "upc_reader", "ean_8_reader"], // 支援的條碼類型
+      },
     }, function (err) {
       if (err) {
-        console.error("初始化失敗", err);
+        console.error("Quagga 初始化失敗:", err);
         return;
       }
-      console.log("初始化完成");
-      Quagga.start(); // 開始掃描
+      console.log("Quagga 初始化完成");
+      Quagga.start(); // 啟動掃描
     });
-    // 偵測到條碼
+    // 偵測到條碼時觸發
     Quagga.onDetected(function (result) {
-      const barcode = result.codeResult.code;
-      // 檢查是否重複掃描
-      if (!barcodes.includes(barcode)) {
-        barcodes.push(barcode); // 儲存條碼
-        updateBarcodeList(barcode); // 更新條碼清單
-        console.log("掃描成功，條碼內容：" + barcode);
+      const code = result.codeResult.code; // 獲取條碼內容
+      if (!scannedCodes.includes(code)) { // 避免重複掃描
+        scannedCodes.push(code);
+        const resultDiv = document.createElement("div");
+        resultDiv.textContent = `條碼：${code}`;
+        document.querySelector("#results").appendChild(resultDiv);
       }
     });
     // 停止掃描按鈕
-    document.getElementById("stop").addEventListener("click", () => {
-      Quagga.stop();
-      console.log("掃描完成，所有條碼：", barcodes);
-      alert("掃描完成，所有條碼：\n" + barcodes.join("\n"));
+    document.querySelector("#stop-scan").addEventListener("click", function () {
+      Quagga.stop(); // 停止掃描
+      alert(`掃描完成！共掃描到 ${scannedCodes.length} 個條碼：\n` + scannedCodes.join("\n"));
     });
-    // 更新條碼清單
-    function updateBarcodeList(barcode) {
-      const barcodeList = document.getElementById("barcode-list");
-      const listItem = document.createElement("li");
-      listItem.textContent = barcode;
-      barcodeList.appendChild(listItem);
-    }
   </script>
 </body>
 </html>
