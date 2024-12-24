@@ -31,7 +31,7 @@
 </head>
 <body>
   <h1>條碼掃描器</h1>
-  <video id="video"></video>
+  <video id="video" autoplay></video>
   <button id="stop-button">掃描完成</button>
   <h2>掃描記錄</h2>
   <div id="results"></div>
@@ -42,16 +42,23 @@
 
     async function startScanner() {
       try {
-        // 設定支援格式為 Code 39
-        codeReader.setHints({
-          hints: {
-            POSSIBLE_FORMATS: [ZXing.BarcodeFormat.CODE_39] // 僅支援 Code 39 格式
-          },
-        });
+        // 確認瀏覽器的媒體設備是否可用
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          alert('您的設備不支援相機使用，請使用支援的設備或更新瀏覽器。');
+          return;
+        }
 
-        // 開始從相機讀取條碼
+        // 取得設備的所有相機
         const devices = await codeReader.listVideoInputDevices();
-        const selectedDeviceId = devices[0]?.deviceId; // 使用第一個相機
+        if (devices.length === 0) {
+          alert('未檢測到相機設備，請確認相機是否正常工作。');
+          return;
+        }
+
+        // 選擇後置相機（通常是最後一個）
+        const selectedDeviceId = devices[devices.length - 1].deviceId;
+
+        // 開始相機並進行條碼掃描
         codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
           if (result) {
             const barcode = result.text; // 獲取條碼結果
@@ -60,9 +67,13 @@
               document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
             }
           }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error('條碼掃描錯誤：', err);
+          }
         });
       } catch (err) {
-        console.error('Error starting scanner:', err);
+        console.error('相機啟動失敗：', err);
+        alert('相機啟動失敗，請檢查設備或瀏覽器的相機權限設定。');
       }
     }
 
