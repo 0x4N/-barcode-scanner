@@ -42,13 +42,6 @@
 
     async function startScanner() {
       try {
-        // 檢查相機權限
-        const hasCameraAccess = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (!hasCameraAccess) {
-          alert("無法訪問相機，請確認瀏覽器權限。");
-          return;
-        }
-
         // 設定支援格式為 Code 39
         codeReader.setHints({
           hints: {
@@ -56,13 +49,8 @@
           },
         });
 
-        // 列出設備並啟用後置相機
+        // 開始從相機讀取條碼
         const devices = await codeReader.listVideoInputDevices();
-        if (devices.length === 0) {
-          alert("未找到可用的相機設備。");
-          return;
-        }
-
         const selectedDeviceId = devices[0]?.deviceId; // 使用第一個相機
         codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
           if (result) {
@@ -72,13 +60,9 @@
               document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
             }
           }
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error(err);
-          }
         });
       } catch (err) {
-        console.error("相機啟動失敗：", err);
-        alert("無法啟動相機，請檢查瀏覽器權限或設備相容性。");
+        console.error('Error starting scanner:', err);
       }
     }
 
