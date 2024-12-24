@@ -31,7 +31,9 @@
 
     .scanner-video {
       width: 100%;
+      max-height: 300px;
       border-radius: 10px;
+      background-color: black; /* 如果沒有相機畫面時顯示背景 */
     }
 
     .scanner-overlay {
@@ -103,9 +105,9 @@
 </head>
 <body>
   <div class="container">
-    <h1>SCAN BARCODES</h1>
+    <h1>BARCODES</h1>
     <div class="scanner">
-      <video id="video" class="scanner-video"></video>
+      <video id="video" class="scanner-video" autoplay></video>
       <div class="scanner-overlay">
         <div class="scanner-frame"></div>
       </div>
