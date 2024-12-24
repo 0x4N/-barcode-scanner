@@ -4,89 +4,92 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描器</title>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #001a4d;
-      color: #ffffff;
     }
-    .scanner {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    .scanner-video {
-      width: 100%;
-      max-height: 300px;
-      border-radius: 10px;
-      background-color: black;
-    }
-    .scanner-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .scanner-frame {
-      border: 3px solid red;
+    #video {
       width: 80%;
-      height: 30%;
-      border-radius: 5px;
-      animation: scanning 1.5s infinite;
+      max-width: 300px;
+      border: 1px solid black;
     }
-    @keyframes scanning {
-      0% { box-shadow: 0 0 10px red; }
-      50% { box-shadow: 0 0 20px red; }
-      100% { box-shadow: 0 0 10px red; }
+    #results {
+      margin-top: 20px;
     }
-    .scan-button {
+    button {
       margin-top: 20px;
       padding: 10px 20px;
-      font-size: 1em;
-      background-color: #00cc44;
-      color: #ffffff;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
       border: none;
-      border-radius: 5px;
       cursor: pointer;
-    }
-    .scan-button:hover {
-      background-color: #009933;
     }
   </style>
 </head>
 <body>
-  <div class="scanner">
-    <video id="video" class="scanner-video" autoplay></video>
-    <div class="scanner-overlay">
-      <div class="scanner-frame"></div>
-    </div>
-  </div>
-  <button id="scan-complete" class="scan-button">掃描完成</button>
+  <h1>條碼掃描器</h1>
+  <video id="video"></video>
+  <button id="stop-button">掃描完成</button>
+  <h2>掃描記錄</h2>
+  <div id="results"></div>
+
   <script>
-    const video = document.querySelector('#video');
-    const scanButton = document.querySelector('#scan-complete');
+    const scannedBarcodes = []; // 儲存掃描結果
+    const codeReader = new ZXing.BrowserMultiFormatReader(); // 建立 ZXing 掃描器
 
-    // 啟用相機
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => {
-        video.srcObject = stream;
-        video.play();
-      })
-      .catch(err => {
-        console.error('Error accessing the camera:', err);
-        alert('無法啟用相機，請確認是否授予了權限或設備支持相機。');
-      });
+    async function startScanner() {
+      try {
+        // 檢查相機權限
+        const hasCameraAccess = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (!hasCameraAccess) {
+          alert("無法訪問相機，請確認瀏覽器權限。");
+          return;
+        }
 
-    // 測試按鈕是否響應
-    scanButton.addEventListener('click', () => {
+        // 設定支援格式為 Code 39
+        codeReader.setHints({
+          hints: {
+            POSSIBLE_FORMATS: [ZXing.BarcodeFormat.CODE_39] // 僅支援 Code 39 格式
+          },
+        });
+
+        // 列出設備並啟用後置相機
+        const devices = await codeReader.listVideoInputDevices();
+        if (devices.length === 0) {
+          alert("未找到可用的相機設備。");
+          return;
+        }
+
+        const selectedDeviceId = devices[0]?.deviceId; // 使用第一個相機
+        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+          if (result) {
+            const barcode = result.text; // 獲取條碼結果
+            if (!scannedBarcodes.includes(barcode)) {
+              scannedBarcodes.push(barcode); // 儲存條碼資訊
+              document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
+            }
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+          }
+        });
+      } catch (err) {
+        console.error("相機啟動失敗：", err);
+        alert("無法啟動相機，請檢查瀏覽器權限或設備相容性。");
+      }
+    }
+
+    document.getElementById('stop-button').addEventListener('click', () => {
+      codeReader.reset(); // 停止相機
       alert('掃描完成！');
+      console.log('Scanned Barcodes:', scannedBarcodes); // 打印所有掃描結果
     });
+
+    // 啟動條碼掃描器
+    startScanner();
   </script>
 </body>
 </html>
