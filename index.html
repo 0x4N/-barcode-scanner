@@ -130,6 +130,7 @@ async function uploadToGoogleSheet(barcode) {
       headers: {
         'Content-Type': 'application/json', // 確保為 JSON 格式
       },
+      mode: 'cors', // 明確指定跨域模式
       body: JSON.stringify({
         barcode: barcode, // 條碼
         status: currentStatus, // 貨態
