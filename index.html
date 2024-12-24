@@ -20,6 +20,7 @@
     button {
       padding: 10px 20px;
       font-size: 16px;
+      margin: 10px;
       background-color: #4CAF50;
       color: white;
       border: none;
@@ -28,10 +29,6 @@
     #results {
       margin-top: 20px;
       text-align: left;
-    }
-    .barcode-item {
-      font-size: 16px;
-      margin: 5px 0;
     }
     #modal {
       position: fixed;
@@ -59,8 +56,21 @@
 </head>
 <body>
   <h1>條碼掃描器</h1>
+
+  <!-- 貨態按鈕 -->
+  <div>
+    <button onclick="startScanning('已集貨')">上收</button>
+    <button onclick="startScanning('配送中')">配送中</button>
+    <button onclick="startScanning('配達')">配達</button>
+    <button onclick="startScanning('電聯無人')">電聯無人</button>
+    <button onclick="startScanning('另約時間')">另約時間</button>
+    <button onclick="startScanning('客戶不在')">客戶不在</button>
+    <button onclick="startScanning('包裹異常')">包裹異常</button>
+    <button onclick="startScanning('未配返倉')">未配返倉</button>
+  </div>
+
   <video id="video" autoplay></video>
-  <button id="stop-button">掃描完成</button>
+
   <h2>掃描記錄</h2>
   <div id="results"></div>
 
@@ -74,16 +84,15 @@
   <script>
     const scannedBarcodes = []; // 儲存掃描結果的陣列
     const codeReader = new ZXing.BrowserMultiFormatReader(); // 初始化 ZXing 掃描器
+    let currentStatus = ''; // 當前貨態
 
     // 啟動條碼掃描
-    async function startScanner() {
-      try {
-        // 檢查瀏覽器是否支援相機
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          alert('您的設備不支援相機功能，請使用支援的設備或更新瀏覽器。');
-          return;
-        }
+    async function startScanning(status) {
+      currentStatus = status; // 設定當前貨態
+      document.getElementById('results').innerHTML = ''; // 清空結果
+      scannedBarcodes.length = 0; // 清空記錄
 
+      try {
         // 列出所有相機設備
         const devices = await codeReader.listVideoInputDevices();
         if (devices.length === 0) {
@@ -100,7 +109,7 @@
             const barcode = result.text; // 獲取條碼內容
             if (!scannedBarcodes.includes(barcode)) {
               scannedBarcodes.push(barcode); // 添加到掃描記錄
-              showModal(barcode); // 顯示彈窗
+              uploadToGoogleSheet(barcode); // 上傳條碼至 Google Sheet
             }
           }
           if (err && !(err instanceof ZXing.NotFoundException)) {
@@ -113,11 +122,50 @@
       }
     }
 
-    // 停止條碼掃描
-    document.getElementById('stop-button').addEventListener('click', () => {
-      codeReader.reset(); // 停止相機
-      alert('掃描完成！');
-    });
+    // 上傳條碼至 Google Sheet
+    async function uploadToGoogleSheet(barcode) {
+      try {
+        const response = await fetch('https://script.google.com/macros/s/1LhFwGvTRm9zTKeebg7SO_W4rte0FYCCfDJLmgGQsTqM/exec', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            barcode: barcode,
+            status: currentStatus,
+          }),
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          showModal(`單號：${barcode} 上傳成功！`);
+        } else {
+          showModal(`單號：${barcode} 上傳失敗，請重試。`);
+        }
+      } catch (error) {
+        console.error('上傳失敗：', error);
+        showModal(`單號：${barcode} 上傳失敗，請檢查網絡連接。`);
+      }
+    }
+
+    // 顯示彈窗
+    function showModal(message) {
+      const modal = document.getElementById('modal');
+      const overlay = document.getElementById('modal-overlay');
+      const modalContent = document.getElementById('modal-content');
+      const confirmButton = document.getElementById('confirm-button');
+
+      modalContent.textContent = message;
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+
+      // 確認按鈕點擊事件
+      confirmButton.onclick = () => {
+        modal.style.display = 'none';
+        overlay.style.display = 'none';
+        updateScannedList(); // 更新掃描記錄
+      };
+    }
 
     // 更新掃描記錄列表
     function updateScannedList() {
@@ -126,33 +174,10 @@
 
       scannedBarcodes.forEach((barcode, index) => {
         const item = document.createElement('div');
-        item.className = 'barcode-item';
         item.textContent = `#${index + 1} 條碼：${barcode}`;
         resultsContainer.appendChild(item); // 添加到掃描記錄容器
       });
     }
-
-    // 顯示彈窗
-    function showModal(barcode) {
-      const modal = document.getElementById('modal');
-      const overlay = document.getElementById('modal-overlay');
-      const modalContent = document.getElementById('modal-content');
-      const confirmButton = document.getElementById('confirm-button');
-
-      modalContent.textContent = `掃描成功！條碼內容：${barcode}`;
-      modal.style.display = 'block';
-      overlay.style.display = 'block';
-
-      // 確認按鈕點擊事件
-      confirmButton.onclick = () => {
-        modal.style.display = 'none';
-        overlay.style.display = 'none';
-        updateScannedList(); // 更新列表
-      };
-    }
-
-    // 啟動條碼掃描器
-    startScanner();
   </script>
 </body>
 </html>
