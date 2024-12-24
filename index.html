@@ -4,72 +4,76 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描器</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
     }
-    #scanner-container {
+    #video {
       width: 100%;
-      max-width: 480px;
-      margin: 0 auto;
-      position: relative;
+      max-width: 600px;
+      border: 1px solid black;
     }
     #results {
       margin-top: 20px;
     }
     button {
+      margin-top: 20px;
       padding: 10px 20px;
-      margin-top: 10px;
       font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <h1>條碼掃描器</h1>
-  <div id="scanner-container"></div>
-  <button id="stop-scan">掃描完成</button>
+  <video id="video"></video>
+  <button id="stop-button">掃描完成</button>
   <h2>掃描記錄</h2>
   <div id="results"></div>
+
   <script>
-    const scannedCodes = []; // 儲存掃描到的條碼
-    // 初始化 Quagga 條碼掃描器
-    Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: document.querySelector("#scanner-container"), // 掃描畫面容器
-        constraints: {
-          facingMode: "environment", // 後置攝像頭
-        },
-      },
-      decoder: {
-        readers: ["code_128_reader", "ean_reader", "upc_reader", "ean_8_reader"], // 支援的條碼類型
-      },
-    }, function (err) {
-      if (err) {
-        console.error("Quagga 初始化失敗:", err);
-        return;
+    const scannedBarcodes = []; // 儲存掃描結果
+    const codeReader = new ZXing.BrowserMultiFormatReader(); // 建立 ZXing 掃描器
+
+    async function startScanner() {
+      try {
+        // 設定支援格式為 Code 39
+        codeReader.setHints({
+          hints: {
+            POSSIBLE_FORMATS: [ZXing.BarcodeFormat.CODE_39] // 僅支援 Code 39 格式
+          },
+        });
+
+        // 開始從相機讀取條碼
+        const devices = await codeReader.listVideoInputDevices();
+        const selectedDeviceId = devices[0]?.deviceId; // 使用第一個相機
+        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+          if (result) {
+            const barcode = result.text; // 獲取條碼結果
+            if (!scannedBarcodes.includes(barcode)) {
+              scannedBarcodes.push(barcode); // 儲存條碼資訊
+              document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Error starting scanner:', err);
       }
-      console.log("Quagga 初始化完成");
-      Quagga.start(); // 啟動掃描
+    }
+
+    document.getElementById('stop-button').addEventListener('click', () => {
+      codeReader.reset(); // 停止相機
+      alert('掃描完成！');
+      console.log('Scanned Barcodes:', scannedBarcodes); // 打印所有掃描結果
     });
-    // 偵測到條碼時觸發
-    Quagga.onDetected(function (result) {
-      const code = result.codeResult.code; // 獲取條碼內容
-      if (!scannedCodes.includes(code)) { // 避免重複掃描
-        scannedCodes.push(code);
-        const resultDiv = document.createElement("div");
-        resultDiv.textContent = `條碼：${code}`;
-        document.querySelector("#results").appendChild(resultDiv);
-      }
-    });
-    // 停止掃描按鈕
-    document.querySelector("#stop-scan").addEventListener("click", function () {
-      Quagga.stop(); // 停止掃描
-      alert(`掃描完成！共掃描到 ${scannedCodes.length} 個條碼：\n` + scannedCodes.join("\n"));
-    });
+
+    // 啟動條碼掃描器
+    startScanner();
   </script>
 </body>
 </html>
