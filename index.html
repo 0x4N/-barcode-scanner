@@ -4,87 +4,147 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描器</title>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
+      background-color: #001a4d;
+      color: #ffffff;
     }
-    #video {
+
+    .container {
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      color: #ffffff;
+    }
+
+    .scanner {
+      position: relative;
       width: 100%;
-      max-width: 600px;
-      border: 1px solid black;
+      max-width: 500px;
+      margin: 0 auto;
     }
-    #results {
-      margin-top: 20px;
+
+    .scanner-video {
+      width: 100%;
+      border-radius: 10px;
     }
-    button {
+
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .scanner-frame {
+      border: 3px solid red;
+      width: 80%;
+      height: 30%;
+      border-radius: 5px;
+      animation: scanning 1.5s infinite;
+    }
+
+    @keyframes scanning {
+      0% {
+        box-shadow: 0 0 10px red;
+      }
+      50% {
+        box-shadow: 0 0 20px red;
+      }
+      100% {
+        box-shadow: 0 0 10px red;
+      }
+    }
+
+    .scan-button {
       margin-top: 20px;
       padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
+      font-size: 1em;
+      background-color: #00cc44;
+      color: #ffffff;
       border: none;
+      border-radius: 5px;
       cursor: pointer;
+    }
+
+    .scan-button:hover {
+      background-color: #009933;
+    }
+
+    #scan-results {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #scan-results h2 {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+
+    #barcode-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    #barcode-list li {
+      margin: 5px 0;
+      font-size: 1.2em;
     }
   </style>
 </head>
 <body>
-  <h1>條碼掃描器</h1>
-  <video id="video" autoplay></video>
-  <button id="stop-button">掃描完成</button>
-  <h2>掃描記錄</h2>
-  <div id="results"></div>
-
+  <div class="container">
+    <h1>SCAN BARCODES</h1>
+    <div class="scanner">
+      <video id="video" class="scanner-video"></video>
+      <div class="scanner-overlay">
+        <div class="scanner-frame"></div>
+      </div>
+    </div>
+    <button id="scan-complete" class="scan-button">掃描完成</button>
+    <div id="scan-results">
+      <h2>掃描記錄</h2>
+      <ul id="barcode-list"></ul>
+    </div>
+  </div>
   <script>
-    const scannedBarcodes = []; // 儲存掃描結果
-    const codeReader = new ZXing.BrowserMultiFormatReader(); // 建立 ZXing 掃描器
+    const video = document.querySelector('#video');
+    const scanButton = document.querySelector('#scan-complete');
+    const barcodeList = document.querySelector('#barcode-list');
+    let scannedBarcodes = [];
 
-    async function startScanner() {
-      try {
-        // 確認瀏覽器的媒體設備是否可用
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          alert('您的設備不支援相機使用，請使用支援的設備或更新瀏覽器。');
-          return;
-        }
+    // 啟用相機
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play();
+      })
+      .catch(err => {
+        console.error('Error accessing the camera:', err);
+      });
 
-        // 取得設備的所有相機
-        const devices = await codeReader.listVideoInputDevices();
-        if (devices.length === 0) {
-          alert('未檢測到相機設備，請確認相機是否正常工作。');
-          return;
-        }
-
-        // 選擇後置相機（通常是最後一個）
-        const selectedDeviceId = devices[devices.length - 1].deviceId;
-
-        // 開始相機並進行條碼掃描
-        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-          if (result) {
-            const barcode = result.text; // 獲取條碼結果
-            if (!scannedBarcodes.includes(barcode)) {
-              scannedBarcodes.push(barcode); // 儲存條碼資訊
-              document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
-            }
-          }
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error('條碼掃描錯誤：', err);
-          }
-        });
-      } catch (err) {
-        console.error('相機啟動失敗：', err);
-        alert('相機啟動失敗，請檢查設備或瀏覽器的相機權限設定。');
-      }
-    }
-
-    document.getElementById('stop-button').addEventListener('click', () => {
-      codeReader.reset(); // 停止相機
-      alert('掃描完成！');
-      console.log('Scanned Barcodes:', scannedBarcodes); // 打印所有掃描結果
+    // 模擬掃描條碼（替換為條碼掃描邏輯）
+    video.addEventListener('click', () => {
+      const mockBarcode = `條碼: ${Math.random().toString().slice(2, 14)}`;
+      scannedBarcodes.push(mockBarcode);
+      const li = document.createElement('li');
+      li.textContent = mockBarcode;
+      barcodeList.appendChild(li);
     });
 
-    // 啟動條碼掃描器
-    startScanner();
+    // 按下"掃描完成"按鈕
+    scanButton.addEventListener('click', () => {
+      alert(`掃描完成！已掃描 ${scannedBarcodes.length} 條碼。`);
+    });
   </script>
 </body>
 </html>
