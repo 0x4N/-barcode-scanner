@@ -33,6 +33,28 @@
       font-size: 16px;
       margin: 5px 0;
     }
+    #modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      display: none;
+      text-align: center;
+      z-index: 10;
+    }
+    #modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 5;
+    }
   </style>
 </head>
 <body>
@@ -41,6 +63,13 @@
   <button id="stop-button">掃描完成</button>
   <h2>掃描記錄</h2>
   <div id="results"></div>
+
+  <!-- 彈窗結構 -->
+  <div id="modal">
+    <p id="modal-content"></p>
+    <button id="confirm-button">確認</button>
+  </div>
+  <div id="modal-overlay"></div>
 
   <script>
     const scannedBarcodes = []; // 儲存掃描結果的陣列
@@ -71,7 +100,7 @@
             const barcode = result.text; // 獲取條碼內容
             if (!scannedBarcodes.includes(barcode)) {
               scannedBarcodes.push(barcode); // 添加到掃描記錄
-              updateScannedList(); // 更新記錄列表
+              showModal(barcode); // 顯示彈窗
             }
           }
           if (err && !(err instanceof ZXing.NotFoundException)) {
@@ -101,6 +130,25 @@
         item.textContent = `#${index + 1} 條碼：${barcode}`;
         resultsContainer.appendChild(item); // 添加到掃描記錄容器
       });
+    }
+
+    // 顯示彈窗
+    function showModal(barcode) {
+      const modal = document.getElementById('modal');
+      const overlay = document.getElementById('modal-overlay');
+      const modalContent = document.getElementById('modal-content');
+      const confirmButton = document.getElementById('confirm-button');
+
+      modalContent.textContent = `掃描成功！條碼內容：${barcode}`;
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+
+      // 確認按鈕點擊事件
+      confirmButton.onclick = () => {
+        modal.style.display = 'none';
+        overlay.style.display = 'none';
+        updateScannedList(); // 更新列表
+      };
     }
 
     // 啟動條碼掃描器
