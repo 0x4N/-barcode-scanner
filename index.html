@@ -9,23 +9,29 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
+      margin: 20px;
     }
     #video {
       width: 100%;
       max-width: 600px;
       border: 1px solid black;
-    }
-    #results {
-      margin-top: 20px;
+      margin-bottom: 20px;
     }
     button {
-      margin-top: 20px;
       padding: 10px 20px;
       font-size: 16px;
       background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
+    }
+    #results {
+      margin-top: 20px;
+      text-align: left;
+    }
+    .barcode-item {
+      font-size: 16px;
+      margin: 5px 0;
     }
   </style>
 </head>
@@ -37,34 +43,35 @@
   <div id="results"></div>
 
   <script>
-    const scannedBarcodes = []; // 儲存掃描結果
-    const codeReader = new ZXing.BrowserMultiFormatReader(); // 建立 ZXing 掃描器
+    const scannedBarcodes = []; // 儲存掃描結果的陣列
+    const codeReader = new ZXing.BrowserMultiFormatReader(); // 初始化 ZXing 掃描器
 
+    // 啟動條碼掃描
     async function startScanner() {
       try {
-        // 確認瀏覽器的媒體設備是否可用
+        // 檢查瀏覽器是否支援相機
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          alert('您的設備不支援相機使用，請使用支援的設備或更新瀏覽器。');
+          alert('您的設備不支援相機功能，請使用支援的設備或更新瀏覽器。');
           return;
         }
 
-        // 取得設備的所有相機
+        // 列出所有相機設備
         const devices = await codeReader.listVideoInputDevices();
         if (devices.length === 0) {
-          alert('未檢測到相機設備，請確認相機是否正常工作。');
+          alert('未檢測到相機設備，請檢查設備是否正常。');
           return;
         }
 
-        // 選擇後置相機（通常是最後一個）
+        // 選擇後置相機（通常是最後一個設備）
         const selectedDeviceId = devices[devices.length - 1].deviceId;
 
-        // 開始相機並進行條碼掃描
+        // 啟動條碼掃描
         codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
           if (result) {
-            const barcode = result.text; // 獲取條碼結果
+            const barcode = result.text; // 獲取條碼內容
             if (!scannedBarcodes.includes(barcode)) {
-              scannedBarcodes.push(barcode); // 儲存條碼資訊
-              document.getElementById('results').innerHTML = scannedBarcodes.map(b => `條碼：${b}`).join('<br>');
+              scannedBarcodes.push(barcode); // 添加到掃描記錄
+              updateScannedList(); // 更新記錄列表
             }
           }
           if (err && !(err instanceof ZXing.NotFoundException)) {
@@ -73,15 +80,28 @@
         });
       } catch (err) {
         console.error('相機啟動失敗：', err);
-        alert('相機啟動失敗，請檢查設備或瀏覽器的相機權限設定。');
+        alert('無法啟動相機，請檢查相機權限或設備設置。');
       }
     }
 
+    // 停止條碼掃描
     document.getElementById('stop-button').addEventListener('click', () => {
       codeReader.reset(); // 停止相機
       alert('掃描完成！');
-      console.log('Scanned Barcodes:', scannedBarcodes); // 打印所有掃描結果
     });
+
+    // 更新掃描記錄列表
+    function updateScannedList() {
+      const resultsContainer = document.getElementById('results');
+      resultsContainer.innerHTML = ''; // 清空現有列表
+
+      scannedBarcodes.forEach((barcode, index) => {
+        const item = document.createElement('div');
+        item.className = 'barcode-item';
+        item.textContent = `#${index + 1} 條碼：${barcode}`;
+        resultsContainer.appendChild(item); // 添加到掃描記錄容器
+      });
+    }
 
     // 啟動條碼掃描器
     startScanner();
