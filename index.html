@@ -1,185 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>條碼掃描器</title>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    #video {
-      width: 100%;
-      max-width: 600px;
-      border: 1px solid black;
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #results {
-      margin-top: 20px;
-      text-align: left;
-    }
-    #modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: white;
-      padding: 20px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      display: none;
-      text-align: center;
-      z-index: 10;
-    }
-    #modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: none;
-      z-index: 5;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner</title>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        video { width: 100%; height: auto; }
+        .controls { display: flex; flex-wrap: wrap; margin: 10px 0; }
+        button { margin: 5px; padding: 10px; font-size: 16px; }
+        .history { margin: 10px 0; }
+        .history div { margin: 5px 0; }
+    </style>
 </head>
 <body>
-  <h1>條碼掃描器</h1>
+    <h1>Barcode Scanner</h1>
+    <video id="video" autoplay></video>
+    <div class="controls">
+        <button onclick="setStatus('上收')">上收</button>
+        <button onclick="setStatus('配送中')">配送中</button>
+        <button onclick="setStatus('配達')">配達</button>
+        <button onclick="setStatus('電聯無人')">電聯無人</button>
+        <button onclick="setStatus('另約時間')">另約時間</button>
+        <button onclick="setStatus('客戶不在')">客戶不在</button>
+        <button onclick="setStatus('包裹異常')">包裹異常</button>
+        <button onclick="setStatus('未配返倉')">未配返倉</button>
+    </div>
+    <div class="history">
+        <h2>掃描記錄</h2>
+        <div id="history-list"></div>
+    </div>
 
-  <!-- 貨態按鈕 -->
-  <div>
-    <button onclick="startScanning('已集貨')">上收</button>
-    <button onclick="startScanning('配送中')">配送中</button>
-    <button onclick="startScanning('配達')">配達</button>
-    <button onclick="startScanning('電聯無人')">電聯無人</button>
-    <button onclick="startScanning('另約時間')">另約時間</button>
-    <button onclick="startScanning('客戶不在')">客戶不在</button>
-    <button onclick="startScanning('包裹異常')">包裹異常</button>
-    <button onclick="startScanning('未配返倉')">未配返倉</button>
-  </div>
+    <script>
+        let selectedStatus = '';
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        const videoElement = document.getElementById('video');
+        const historyList = document.getElementById('history-list');
+        const scannedBarcodes = new Set();
 
-  <video id="video" autoplay></video>
+        codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
+            if (result) {
+                const barcode = result.text;
+                if (!scannedBarcodes.has(barcode)) {
+                    scannedBarcodes.add(barcode);
+                    const record = document.createElement('div');
+                    record.textContent = `${barcode} - ${selectedStatus}`;
+                    historyList.appendChild(record);
+                    alert(`條碼: ${barcode}\n狀態: ${selectedStatus}`);
+                    uploadData(barcode, selectedStatus);
+                }
+            }
+        });
 
-  <h2>掃描記錄</h2>
-  <div id="results"></div>
-
-  <!-- 彈窗結構 -->
-  <div id="modal">
-    <p id="modal-content"></p>
-    <button id="confirm-button">確認</button>
-  </div>
-  <div id="modal-overlay"></div>
-
-  <script>
-    const scannedBarcodes = []; // 儲存掃描結果的陣列
-    const codeReader = new ZXing.BrowserMultiFormatReader(); // 初始化 ZXing 掃描器
-    let currentStatus = ''; // 當前貨態
-
-    // 啟動條碼掃描
-    async function startScanning(status) {
-      currentStatus = status; // 設定當前貨態
-      document.getElementById('results').innerHTML = ''; // 清空結果
-      scannedBarcodes.length = 0; // 清空記錄
-
-      try {
-        // 列出所有相機設備
-        const devices = await codeReader.listVideoInputDevices();
-        if (devices.length === 0) {
-          alert('未檢測到相機設備，請檢查設備是否正常。');
-          return;
+        function setStatus(status) {
+            selectedStatus = status;
         }
 
-        // 選擇後置相機（通常是最後一個設備）
-        const selectedDeviceId = devices[devices.length - 1].deviceId;
-
-        // 啟動條碼掃描
-        codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-          if (result) {
-            const barcode = result.text; // 獲取條碼內容
-            if (!scannedBarcodes.includes(barcode)) {
-              scannedBarcodes.push(barcode); // 添加到掃描記錄
-              uploadToGoogleSheet(barcode); // 上傳條碼至 Google Sheet
+        async function uploadData(barcode, status) {
+            if (!status) {
+                alert("請先選擇貨態！");
+                return;
             }
-          }
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.error('條碼掃描錯誤：', err);
-          }
-        });
-      } catch (err) {
-        console.error('相機啟動失敗：', err);
-        alert('無法啟動相機，請檢查相機權限或設備設置。');
-      }
-    }
-
-   // 上傳條碼至 Google Sheet
-async function uploadToGoogleSheet(barcode) {
-  try {
-    const response = await fetch('https://script.google.com/macros/s/AKfycbyC9CxLBPXmSVfdnWy2P0XnYBKat34t9a7j4A7D6puN-HCJ3f2rJpFnf6hO7QVZq9dSGw/exec', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json', // 確保為 JSON 格式
-      },
-      mode: 'cors', // 明確指定跨域模式
-      body: JSON.stringify({
-        barcode: barcode, // 條碼
-        status: currentStatus, // 貨態
-      }),
-    });
-
-    // 確認 API 回應是否成功
-    const result = await response.json();
-    if (response.ok && result.success) {
-      showModal(`單號：${barcode} 上傳成功！`);
-    } else {
-      showModal(`單號：${barcode} 上傳失敗，請重試。`);
-    }
-  } catch (error) {
-    console.error('上傳失敗：', error); // 紀錄錯誤
-    showModal(`單號：${barcode} 上傳失敗，請檢查網絡連接。`);
-  }
-}
-
-    // 顯示彈窗
-    function showModal(message) {
-      const modal = document.getElementById('modal');
-      const overlay = document.getElementById('modal-overlay');
-      const modalContent = document.getElementById('modal-content');
-      const confirmButton = document.getElementById('confirm-button');
-
-      modalContent.textContent = message;
-      modal.style.display = 'block';
-      overlay.style.display = 'block';
-
-      // 確認按鈕點擊事件
-      confirmButton.onclick = () => {
-        modal.style.display = 'none';
-        overlay.style.display = 'none';
-        updateScannedList(); // 更新掃描記錄
-      };
-    }
-
-    // 更新掃描記錄列表
-    function updateScannedList() {
-      const resultsContainer = document.getElementById('results');
-      resultsContainer.innerHTML = ''; // 清空現有列表
-
-      scannedBarcodes.forEach((barcode, index) => {
-        const item = document.createElement('div');
-        item.textContent = `#${index + 1} 條碼：${barcode}`;
-        resultsContainer.appendChild(item); // 添加到掃描記錄容器
-      });
-    }
-  </script>
+            const response = await fetch('https://script.google.com/macros/s/AKfycbyH_T5AMTAdvWC0xN-7Jra2GP5O2E3DvMQTbvmdEPA3JJea4t0EndLW1CPmYKnJoyi6UQ/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode, status })
+            });
+            if (response.ok) {
+                console.log('Data uploaded successfully.');
+            } else {
+                console.error('Failed to upload data.');
+            }
+        }
+    </script>
 </body>
 </html>
