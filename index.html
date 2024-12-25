@@ -39,6 +39,7 @@
         const historyList = document.getElementById('history-list');
         const scannedBarcodes = new Set();
 
+        // 啟動相機並掃描條碼
         codeReader.decodeFromVideoDevice(null, videoElement, (result, error) => {
             if (result) {
                 const barcode = result.text;
@@ -53,24 +54,41 @@
             }
         });
 
+        // 設置貨態
         function setStatus(status) {
             selectedStatus = status;
         }
 
+        // 上傳條碼和貨態至伺服器
         async function uploadData(barcode, status) {
             if (!status) {
                 alert("請先選擇貨態！");
                 return;
             }
-            const response = await fetch('https://script.google.com/macros/s/AKfycbxxefb6l83_QSppet8ls-HXqiTxmUTKhhYi94eMtmkAdbY-TRQ2F30neg8Vh4lggfZg7A/exec', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ barcode, status })
-            });
-            if (response.ok) {
-                console.log('Data uploaded successfully.');
-            } else {
-                console.error('Failed to upload data.');
+
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxxefb6l83_QSppet8ls-HXqiTxmUTKhhYi94eMtmkAdbY-TRQ2F30neg8Vh4lggfZg7A/exec', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ barcode, status }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Response from server:', result);
+
+                if (result.success) {
+                    console.log('Data uploaded successfully.');
+                } else {
+                    console.error('Server error:', result.error);
+                    alert(`伺服器錯誤：${result.error}`);
+                }
+            } catch (error) {
+                console.error('Failed to upload data:', error);
+                alert(`上傳失敗：${error.message}`);
             }
         }
     </script>
